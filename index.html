@@ -2,12 +2,28 @@
 <base href="/" target="_blank">
 <!--dodo: Add css for canvas-->
 
+<head>
+    <style>
+        .container {
+            text-align: center;
+        }
+
+        .header {
+            color: #3f86a6;
+            font-weight: bold;
+            background-color: #7cc9eb;
+            padding: 10px;
+        }
+    </style>
+</head>
+
 <body>
-    <canvas id="main-canvas" width="500" height="500" style="border:1px solid #000000;">
-        Canvas is not supported in this browser.
-    </canvas>
-
-
+    <div class="container">
+        <h3 class="header">Snake Game</h3>
+        <canvas id="main-canvas" width="500" height="500" style="border:1px solid #000000;">
+            Canvas is not supported in this browser.
+        </canvas>
+    </div>
     <script type="module" src="assets/main.js"></script>
 </body>
 

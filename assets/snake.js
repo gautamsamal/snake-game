@@ -1,4 +1,6 @@
 import Background from './background.js';
+import Food from './food.js';
+import Utils from './utils.js';
 import { controls } from './constants.js';
 
 export default class Snake {
@@ -36,6 +38,7 @@ export default class Snake {
             { x: this.canvasWidth / 2 + (this.bitGap), y: this.canvasHeight / 2, height: this.bitGap, width: this.bitGap },
             { x: this.canvasWidth / 2 + (this.bitGap * 2), y: this.canvasHeight / 2, height: this.bitGap, width: this.bitGap }
         ];
+        this.foodBits = [];
     }
 
     drawBackground() {
@@ -63,10 +66,9 @@ export default class Snake {
 
     drawSnake() {
         this.context.clearRect(this.x, this.y, this.width, this.height);
-        this.drawBackground();
+        // this.drawBackground();
         this.drawGrid();
-        this.context.fillStyle = this.color;
-        this.snakeBits.forEach(bit => {
+        this.snakeBits.forEach((bit, index) => {
             if (bit.x + this.bitGap > this.width + this.x) {
                 bit.x = this.x;
             }
@@ -79,24 +81,48 @@ export default class Snake {
             if (bit.y < this.y) {
                 bit.y = this.height + this.y - this.bitGap;
             }
+            // Create a small border around each block.
+            this.context.fillStyle = '#000';
             this.context.fillRect(bit.x, bit.y, bit.width, bit.height);
+            this.context.fillStyle = this.color;
+            this.context.fillRect(bit.x + 0.5, bit.y + 1, bit.width - 1, bit.height - 2);
         });
+
+        // Draw food
+        this.foodBits.forEach(f => f.draw());
     }
 
     advanceSnake() {
         this.drawSnake();
-        // dodo: make use of worker.
-        setInterval(() => {
+        // Animate frame.
+        const drawSnake = () => {
+            this.drawSnake();
+            requestAnimationFrame(drawSnake);
+        };
+        requestAnimationFrame(drawSnake);
+
+        const snakeAdvanceTimer = Utils.setUpTimer(() => {
             if (this.dirUserEvent) {
                 this.currentDir = this.dirUserEvent
             }
             const nextBit = this._getDirBit(this.currentDir);
             if (nextBit) {
+                const consumedFood = this._checkConsumptions(nextBit);
                 this.snakeBits.push(nextBit);
-                this.snakeBits.shift();
+                if (!consumedFood) {
+                    // In case of consumed, do not shift and it'll increase the length
+                    this.snakeBits.shift();
+                } else {
+                    consumedFood.setInActive();
+                    console.log('scored');
+                }
             }
-            this.drawSnake();
-        }, 500 / this.speed);
+        }, 400 / this.speed);
+        snakeAdvanceTimer.postMessage('start');
+
+        setTimeout(() => {
+            this._findFood();
+        }, 5000 / this.speed);
     }
 
     changeDirection(dir) {
@@ -128,5 +154,32 @@ export default class Snake {
                 console.warn(`Unsupported move - ${dir}`);
                 return null;
         }
+    }
+
+    _findFood() {
+        const radius = this.bitGap / 2;
+        Utils.doMathWork('calculateRandomFood', {
+            bitsToSkip: this.snakeBits,
+            xMin: this.x,
+            yMin: this.y,
+            xMax: this.x + this.width,
+            yMax: this.y + this.height,
+            roundOff: this.bitGap
+        }, ({ x, y }) => {
+            // For now, keep one food in array.
+            this.foodBits.shift();
+            this.foodBits.push(new Food(this.context, x, y, radius));
+            setTimeout(() => {
+                this._findFood();
+            }, 10000 / this.speed);
+        });
+    }
+
+    _checkConsumptions(head) {
+        const { x, y, height, width } = head;
+        return this.foodBits.filter(f => f.active).find(f => {
+            return (f.x >= x && f.x <= x + width &&
+                f.y >= y && f.y <= y + height);
+        });
     }
 }
